@@ -177,8 +177,8 @@ async fn milk_price_command(bot: Bot, msg: Message) -> HandlerResult {
         Some(price) => {
             bot.send_message(msg.chat.id, format!("Current milk price is '{}' €", price))
                 .await?;
-            return Ok(());
+            Ok(())
         }
-        None => return Ok(()),
+        None => Ok(()),
     }
 }

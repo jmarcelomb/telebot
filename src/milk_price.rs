@@ -1,4 +1,3 @@
-use reqwest;
 use scraper::{Html, Selector};
 use thiserror::Error;
 use tokio::time::{sleep, Duration};
@@ -28,12 +27,12 @@ pub async fn get_price(url: &str) -> Result<Option<f32>, PriceError> {
     let selector =
         Selector::parse("span.ct-price-formatted").map_err(|_| PriceError::HtmlParseError)?;
 
-    for element in document.select(&selector) {
+    if let Some(element) = document.select(&selector).next() {
         let text = element.text().collect::<Vec<_>>().join("");
         let text = text.trim();
         let price_as_float = text
             .trim_start_matches('€')
-            .replace(",", ".")
+            .replace(',', ".")
             .parse::<f32>()?;
         return Ok(Some(price_as_float));
     }
@@ -63,17 +62,16 @@ pub async fn price_periodically_checker_thread(url: &str, interval: u64) {
         sleep(Duration::from_secs(interval)).await;
         log::info!("Checking milk price again..");
         let current_price_res = get_price(url).await;
-        let current_price: f32;
 
-        match current_price_res {
+        let current_price: f32 = match current_price_res {
             Ok(price_option) => {
                 if price_option.is_none() {
                     continue;
                 }
-                current_price = price_option.unwrap();
+                price_option.unwrap()
             }
             Err(_) => continue,
-        }
+        };
 
         if current_price != last_price {
             let value_increased = current_price > last_price;
