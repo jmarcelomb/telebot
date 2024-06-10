@@ -14,6 +14,7 @@ type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
 const MILK_URL: &str =
     "https://www.continente.pt/produto/leite-proteina-sem-lactose-mimosa-7652960.html";
+const FOUR_HOURS_IN_SECONDS: u64 = 60 * 60 * 4;
 
 #[derive(Clone, Default)]
 pub enum State {
@@ -33,6 +34,8 @@ pub enum State {
 enum Command {
     #[command(description = "display this text.")]
     Help,
+    #[command(description = "display current application version.")]
+    Version,
     #[command(description = "start the purchase procedure.")]
     Start,
     #[command(description = "cancel the purchase procedure.")]
@@ -51,7 +54,9 @@ async fn main() {
 
     let bot = Bot::from_env();
 
-    tokio::spawn(async { milk_price::price_periodically_checker_thread(MILK_URL, 10).await });
+    tokio::spawn(async {
+        milk_price::price_periodically_checker_thread(MILK_URL, FOUR_HOURS_IN_SECONDS).await
+    });
 
     Dispatcher::builder(bot, schema())
         .dependencies(dptree::deps![InMemStorage::<State>::new()])
@@ -68,6 +73,7 @@ fn schema() -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>>
         .branch(
             case![State::Start]
                 .branch(case![Command::Help].endpoint(help))
+                .branch(case![Command::Version].endpoint(version))
                 .branch(case![Command::MilkPrice].endpoint(milk_price_command))
                 .branch(case![Command::Start].endpoint(start)),
         )
@@ -96,6 +102,13 @@ async fn start(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
 }
 
 async fn help(bot: Bot, msg: Message) -> HandlerResult {
+    let version = env!("CARGO_PKG_VERSION");
+    bot.send_message(msg.chat.id, format!("Current version is: {} 🏷️", version))
+        .await?;
+    Ok(())
+}
+
+async fn version(bot: Bot, msg: Message) -> HandlerResult {
     bot.send_message(msg.chat.id, Command::descriptions().to_string())
         .await?;
     Ok(())
