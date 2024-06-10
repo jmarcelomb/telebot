@@ -102,14 +102,14 @@ async fn start(bot: Bot, dialogue: MyDialogue, msg: Message) -> HandlerResult {
 }
 
 async fn help(bot: Bot, msg: Message) -> HandlerResult {
-    let version = env!("CARGO_PKG_VERSION");
-    bot.send_message(msg.chat.id, format!("Current version is: {} 🏷️", version))
+    bot.send_message(msg.chat.id, Command::descriptions().to_string())
         .await?;
     Ok(())
 }
 
 async fn version(bot: Bot, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, Command::descriptions().to_string())
+    let version = env!("CARGO_PKG_VERSION");
+    bot.send_message(msg.chat.id, format!("Current version is: {} 🏷️", version))
         .await?;
     Ok(())
 }
@@ -175,7 +175,7 @@ async fn milk_price_command(bot: Bot, msg: Message) -> HandlerResult {
 
     match milk_price {
         Some(price) => {
-            bot.send_message(msg.chat.id, format!("Current milk price is '{}' €", price))
+            bot.send_message(msg.chat.id, format!("Current milk price is: {} €", price))
                 .await?;
             Ok(())
         }
