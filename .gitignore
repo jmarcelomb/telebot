@@ -3,3 +3,6 @@
 .env
 env_vars.sh
 .venv/
+
+secrets/
+*.db

@@ -1,8 +1,8 @@
 use scraper::{Html, Selector};
 use thiserror::Error;
-use tokio::time::{sleep, Duration};
 
 use crate::chat;
+use crate::services;
 
 #[derive(Error, Debug)]
 pub enum PriceError {
@@ -40,26 +40,37 @@ pub async fn get_price(url: &str) -> Result<Option<f32>, PriceError> {
     Ok(None)
 }
 
-pub async fn price_periodically_checker_thread(url: &str, interval: u64) {
-    log::info!(
-        "price_periodically_checker_thread started running with interval {}",
-        interval
-    );
-
-    let mut last_price = if let Some(price) = get_price(url).await.unwrap() {
-        chat::send_message(&format!(
-            "Current Mimosa Protein Milk price is {} € 🥛🐄",
-            price
-        ))
-        .await;
-        price
-    } else {
-        0.0
-    };
+pub async fn price_periodically_checker_thread(service_name: &str, url: &str) {
+    // log::info!(
+    //     "price_periodically_checker_thread started running with interval {}",
+    //     interval
+    // );
+    let mut last_price: f32;
+    let price_query = get_price(url).await;
+    match price_query {
+        Ok(price_option) => {
+            last_price = if let Some(price) = price_option {
+                // let _ = chat::send_message(&format!(
+                //     "Current Mimosa Protein Milk price is {} € 🥛🐄",
+                //     price
+                // ))
+                // .await;
+                price
+            } else {
+                0.0
+            };
+        }
+        Err(error) => {
+            log::error!("Error querying price, setting to 0. Error: {}", error);
+            last_price = 0.0;
+        }
+    }
 
     loop {
-        log::info!("Sleeping for {} seconds..", interval);
-        sleep(Duration::from_secs(interval)).await;
+        log::info!("Calling services::manager..");
+
+        services::manager(service_name).await;
+
         log::info!("Checking milk price again..");
         let current_price_res = get_price(url).await;
 
@@ -80,7 +91,7 @@ pub async fn price_periodically_checker_thread(url: &str, interval: u64) {
                 "Mimosa Protein Milk price went from {} to {}! 🥛🐄{}",
                 last_price, current_price, emoji
             );
-            chat::send_message(&message).await;
+            let _ = chat::send_message(&message).await;
             last_price = current_price;
         }
     }
