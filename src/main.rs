@@ -185,42 +185,47 @@ async fn inline_query_handler(
 /// Anyone can read data stored in the callback button.
 async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Error + Send + Sync>> {
     if let Some(service_string) = q.data {
-        let re = Regex::new(r"\[([0-9+])\] (.+): (.+)").unwrap();
-
-        if let Some(captures) = re.captures(&service_string) {
-            let id = captures.get(1).map_or("", |m| m.as_str());
-            let service_name = captures.get(2).map_or("", |m| m.as_str());
-            let state_str = captures.get(3).map_or("", |m| m.as_str());
-            let state_bool = state_str == "on";
-
-            let text = format!(
-                "Service '{service_name}' ({id}) was {}",
-                if state_bool { "disable" } else { "enable" }
-            );
-            {
-                let service_guard;
-                {
-                    let services = get_services().write().await;
-                    service_guard = services.get_service(service_name).await;
-                }
-                if let Some(service_guard) = service_guard {
-                    let mut service = service_guard.lock().await;
-                    service.set_enable_state(!state_bool).await;
-                }
-            }
-            // Tell telegram that we've seen this query, to remove 🕑 icons from the
-            // clients. You could also use `answer_callback_query`'s optional
-            // parameters to tweak what happens on the client side.
-            bot.answer_callback_query(q.id).await?;
-
-            // Edit text of the message to which the buttons were attached
-            if let Some(Message { id, chat, .. }) = q.message {
-                bot.edit_message_text(chat.id, id, text).await?;
-            } else if let Some(id) = q.inline_message_id {
-                bot.edit_message_text_inline(id, text).await?;
-            }
+        let mut text = String::new();
+        if service_string == "Exit" {
             log::info!("You chose: {}", service_string);
+            text = "List of services exited.".to_string();
+        } else {
+            let re = Regex::new(r"\[([0-9+])\] (.+): (.+)").unwrap();
+
+            if let Some(captures) = re.captures(&service_string) {
+                let id = captures.get(1).map_or("", |m| m.as_str());
+                let service_name = captures.get(2).map_or("", |m| m.as_str());
+                let state_str = captures.get(3).map_or("", |m| m.as_str());
+                let state_bool = state_str == "on";
+
+                text = format!(
+                    "Service '{service_name}' ({id}) was {}",
+                    if state_bool { "disable" } else { "enable" }
+                );
+                {
+                    let service_guard;
+                    {
+                        let services = get_services().write().await;
+                        service_guard = services.get_service(service_name).await;
+                    }
+                    if let Some(service_guard) = service_guard {
+                        let mut service = service_guard.lock().await;
+                        service.set_enable_state(!state_bool).await;
+                    }
+                }
+                // Tell telegram that we've seen this query, to remove 🕑 icons from the
+                // clients. You could also use `answer_callback_query`'s optional
+                // parameters to tweak what happens on the client side.
+                bot.answer_callback_query(q.id).await?;
+            }
         }
+        // Edit text of the message to which the buttons were attached
+        if let Some(Message { id, chat, .. }) = q.message {
+            bot.edit_message_text(chat.id, id, text).await?;
+        } else if let Some(id) = q.inline_message_id {
+            bot.edit_message_text_inline(id, text).await?;
+        }
+        log::info!("You chose: {}", service_string);
     }
 
     Ok(())
