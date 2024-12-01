@@ -20,30 +20,9 @@ pub async fn init() {
         .await
         .unwrap();
     println!("DB creation result: {:?}", result);
-
-    // let result = sqlx::query("INSERT INTO services (name, enable) VALUES (?, ?)")
-    //     .bind("mimosa_milk")
-    //     .bind(true)
-    //     .execute(&db)
-    //     .await
-    //     .unwrap();
-
-    // println!("Query result: {:?}", result);
-
-    // let service_results = sqlx::query_as::<_, Service>("SELECT id, name, enable FROM services")
-    //     .fetch_all(&db)
-    //     .await
-    //     .unwrap();
-
-    // for service in service_results {
-    //     println!(
-    //         "[{}] name: {}, active {}",
-    //         service.id, &service.name, service.enable
-    //     );
-    // }
 }
 
 pub async fn get_db() -> sqlx::Pool<Sqlite> {
     let db: sqlx::Pool<Sqlite> = SqlitePool::connect(DB_URL).await.unwrap();
-    return db;
+    db
 }

@@ -2,7 +2,7 @@ use scraper::{Html, Selector};
 use thiserror::Error;
 
 use crate::chat;
-use crate::services;
+use tokio::time::{sleep, Duration};
 
 #[derive(Error, Debug)]
 pub enum PriceError {
@@ -40,7 +40,7 @@ pub async fn get_price(url: &str) -> Result<Option<f32>, PriceError> {
     Ok(None)
 }
 
-pub async fn price_periodically_checker_thread(service_name: &str, url: &str) {
+pub async fn price_periodically_checker_thread(url: &str, sleep_interval: Duration) {
     // log::info!(
     //     "price_periodically_checker_thread started running with interval {}",
     //     interval
@@ -49,16 +49,7 @@ pub async fn price_periodically_checker_thread(service_name: &str, url: &str) {
     let price_query = get_price(url).await;
     match price_query {
         Ok(price_option) => {
-            last_price = if let Some(price) = price_option {
-                // let _ = chat::send_message(&format!(
-                //     "Current Mimosa Protein Milk price is {} € 🥛🐄",
-                //     price
-                // ))
-                // .await;
-                price
-            } else {
-                0.0
-            };
+            last_price = price_option.unwrap_or(0.0);
         }
         Err(error) => {
             log::error!("Error querying price, setting to 0. Error: {}", error);
@@ -67,9 +58,9 @@ pub async fn price_periodically_checker_thread(service_name: &str, url: &str) {
     }
 
     loop {
-        log::info!("Calling services::manager..");
+        log::info!("Going into sleep..");
 
-        services::manager(service_name).await;
+        sleep(sleep_interval).await;
 
         log::info!("Checking milk price again..");
         let current_price_res = get_price(url).await;
@@ -100,7 +91,7 @@ pub async fn price_periodically_checker_thread(service_name: &str, url: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use mockito;
+    
 
     #[tokio::test]
     async fn test_get_price_success() {

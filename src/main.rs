@@ -68,12 +68,20 @@ async fn main() {
         let services = get_services();
         {
             let mut services_write = services.write().await;
-            let milk_work_mng =
-                services::WorkerManagement::new(false, Duration::from_secs(FOUR_HOURS_IN_SECONDS));
             services_write
-                .create_service("mimosa_milk".to_string(), milk_work_mng, async {
-                    milk_price::price_periodically_checker_thread("mimosa_milk", MILK_URL).await
-                })
+                .create_service(
+                    "mimosa_milk".to_string(),
+                    true,
+                    Box::new(|| {
+                        Box::pin(async {
+                            milk_price::price_periodically_checker_thread(
+                                MILK_URL,
+                                Duration::from_secs(FOUR_HOURS_IN_SECONDS),
+                            )
+                            .await
+                        })
+                    }),
+                )
                 .await;
         }
     }
@@ -183,21 +191,17 @@ async fn callback_handler(bot: Bot, q: CallbackQuery) -> Result<(), Box<dyn Erro
             let id = captures.get(1).map_or("", |m| m.as_str());
             let service_name = captures.get(2).map_or("", |m| m.as_str());
             let state_str = captures.get(3).map_or("", |m| m.as_str());
-            let state_bool = if state_str == "on" { true } else { false };
+            let state_bool = state_str == "on";
 
             let text = format!(
                 "Service '{service_name}' ({id}) was {}",
-                if state_bool == true {
-                    "disable"
-                } else {
-                    "enable"
-                }
+                if state_bool { "disable" } else { "enable" }
             );
             {
                 let service_guard;
                 {
                     let services = get_services().write().await;
-                    service_guard = services.get_service(&service_name).await;
+                    service_guard = services.get_service(service_name).await;
                 }
                 if let Some(service_guard) = service_guard {
                     let mut service = service_guard.lock().await;
