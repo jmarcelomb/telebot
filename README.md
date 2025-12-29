@@ -138,5 +138,3 @@ Contributions are welcome! Feel free to submit a pull request for new features, 
 # License
 
 This project is licensed under Apache-2.0.
-
-

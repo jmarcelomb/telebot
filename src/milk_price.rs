@@ -91,7 +91,7 @@ pub async fn price_periodically_checker_thread(url: &str, sleep_interval: Durati
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
 
     #[tokio::test]
     async fn test_get_price_success() {
